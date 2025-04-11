@@ -10,36 +10,35 @@ from logging.handlers import RotatingFileHandler
 
 
 #Bot token @Botfather
-TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "6590290778:AAFqJWX11WdXVYvBCh5lL27isH5dayGxTy8")
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 
 #Your API ID from my.telegram.org
-APP_ID = int(os.environ.get("APP_ID", "22321078"))
+APP_ID = int(os.environ.get("APP_ID", ""))
 
 #Your API Hash from my.telegram.org
-API_HASH = os.environ.get("API_HASH", "9960806d290cf4170e43355fcc3687ac")
-
+API_HASH = os.environ.get("API_HASH", "")
 #Your db channel Id
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1002028073828"))
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID", ""))
 
 #OWNER ID
-OWNER_ID = int(os.environ.get("OWNER_ID", "6226520145"))
+OWNER_ID = int(os.environ.get("OWNER_ID", ""))
 
 #Port
 PORT = os.environ.get("PORT", "8080")
 
 #Database 
-DB_URI = os.environ.get("DATABASE_URL", "mongodb+srv://deaddoll07:9VEnNeWUaK40nocJ@smoak.k3wa4bo.mongodb.net/?retryWrites=true&w=majority")
+DB_URI = os.environ.get("DATABASE_URL", "")
 DB_NAME = os.environ.get("DATABASE_NAME", "filesharexbot")
 
 # Shortlink Configuration
-SHORTLINK_URL = os.environ.get("SHORTLINK_URL", "shrinkforearn.in")  # e.g., "shorturllink.in"
-URL_SHORTENER_API_KEY = 'ce63b0b1e09a7be90186589dacc3c9eba63a0108'  # Your shortlink API key
+SHORTLINK_URL = os.environ.get("SHORTLINK_URL", "short2url.in")  # e.g., "shorturllink.in"
+URL_SHORTENER_API_KEY = 'ace1a877c92ef50ff1983ac0c921811531296114'  # Your shortlink API key
     
 # Optional: Log Channel for tracking bot activities
-LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1002068807793"))  # Set to 0 to disable channel logging
+LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", ""))  # Set to 0 to disable channel logging
 
 #force sub channel id, if you want enable force sub
-FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", "-1002042829477"))
+FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", ""))
 
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "4"))
 
