@@ -60,44 +60,108 @@ from config import URL_SHORTENER_API_KEY
 
 url_shortener = CustomUrlShortener(api_key=URL_SHORTENER_API_KEY)
 
+def has_single_file(message: Message) -> bool:
+    """
+    Check if a message contains exactly one file (document, photo, video, or audio).
+    
+    Args:
+        message (Message): The message to check
+        
+    Returns:
+        bool: True if the message has exactly one file, False otherwise
+    """
+    file_types = [
+        message.document,
+        message.photo,
+        message.video,
+        message.audio
+    ]
+    files = [f for f in file_types if f is not None]
+    return len(files) == 1
+
 @Bot.on_message(filters.private & filters.user(ADMINS) & filters.command('batch'))
 async def batch(client: Client, message: Message):
     while True:
         try:
-            first_message = await client.ask(text = "Forward the First Message from DB Channel (with Quotes)..\n\nor Send the DB Channel Post Link", chat_id = message.from_user.id, filters=(filters.forwarded | (filters.text & ~filters.forwarded)), timeout=60)
+            first_message = await client.ask(
+                text="Forward the First Message from DB Channel (with Quotes, must contain exactly one file)..\n\nor Send the DB Channel Post Link",
+                chat_id=message.from_user.id,
+                filters=(filters.forwarded | (filters.text & ~filters.forwarded)),
+                timeout=60
+            )
         except:
+            await message.reply("❌ Batch command timed out or failed.")
             return
+        
+        # Validate the first message
         f_msg_id = await get_message_id(client, first_message)
-        if f_msg_id:
-            break
-        else:
-            await first_message.reply("❌ Error\n\nthis Forwarded Post is not from my DB Channel or this Link is taken from DB Channel", quote = True)
+        if not f_msg_id:
+            await first_message.reply(
+                "❌ Error\n\nThis forwarded post is not from my DB Channel or the link is invalid.",
+                quote=True
+            )
             continue
+        
+        # Check if the message has exactly one file
+        if not first_message.forward_from_chat or not has_single_file(first_message):
+            await first_message.reply(
+                "❌ Error\n\nThe forwarded message must contain exactly one file (e.g., one document, photo, video, or audio).",
+                quote=True
+            )
+            continue
+        break
 
     while True:
         try:
-            second_message = await client.ask(text = "Forward the Last Message from DB Channel (with Quotes)..\nor Send the DB Channel Post link", chat_id = message.from_user.id, filters=(filters.forwarded | (filters.text & ~filters.forwarded)), timeout=60)
+            second_message = await client.ask(
+                text="Forward the Last Message from DB Channel (with Quotes, must contain exactly one file)..\nor Send the DB Channel Post Link",
+                chat_id=message.from_user.id,
+                filters=(filters.forwarded | (filters.text & ~filters.forwarded)),
+                timeout=60
+            )
         except:
+            await message.reply("❌ Batch command timed out or failed.")
             return
+        
+        # Validate the second message
         s_msg_id = await get_message_id(client, second_message)
-        if s_msg_id:
-            break
-        else:
-            await second_message.reply("❌ Error\n\nthis Forwarded Post is not from my DB Channel or this Link is taken from DB Channel", quote = True)
+        if not s_msg_id:
+            await second_message.reply(
+                "❌ Error\n\nThis forwarded post is not from my DB Channel or the link is invalid.",
+                quote=True
+            )
             continue
+        
+        # Check if the message has exactly one file
+        if not second_message.forward_from_chat or not has_single_file(second_message):
+            await second_message.reply(
+                "❌ Error\n\nThe forwarded message must contain exactly one file (e.g., one document, photo, video, or audio).",
+                quote=True
+            )
+            continue
+        
+        # Ensure the range is valid (first_message_id <= last_message_id)
+        if s_msg_id < f_msg_id:
+            await second_message.reply(
+                "❌ Error\n\nThe last message ID must be greater than or equal to the first message ID.",
+                quote=True
+            )
+            continue
+        break
 
+    # Generate the batch link
     string = f"get-{f_msg_id * abs(client.db_channel.id)}-{s_msg_id * abs(client.db_channel.id)}"
     base64_string = await encode(string)
     link = f"https://t.me/{client.username}?start={base64_string}"
     
     # Generate short URL
-    short_url = url_shortener.shorten_url(link)
+    short_url = url_shortener.shorten_url(link) or "Unable to generate short URL"
     
     # Create inline keyboard with multiple buttons
     buttons = [
         [
             InlineKeyboardButton("🔁 Share URL", url=f'https://telegram.me/share/url?url={link}'),
-            InlineKeyboardButton("🔗 Short URL", url=short_url) if short_url else None
+            InlineKeyboardButton("🔗 Short URL", url=short_url) if short_url != "Unable to generate short URL" else None
         ]
     ]
     # Remove None values from buttons
@@ -105,37 +169,58 @@ async def batch(client: Client, message: Message):
     
     reply_markup = InlineKeyboardMarkup(buttons)
     await second_message.reply_text(
-        f"<b>Here is your link</b>\n\n{link}\n\n<b>Short URL:</b> {short_url or 'Unable to generate'}", 
-        quote=True, 
+        f"<b>Batch link generated successfully!</b>\n\n"
+        f"<b>Link:</b> {link}\n"
+        f"<b>Short URL:</b> {short_url}\n\n"
+        f"This link includes messages {f_msg_id} to {s_msg_id}, each with one file.",
+        quote=True,
         reply_markup=reply_markup
     )
-
 
 @Bot.on_message(filters.private & filters.user(ADMINS) & filters.command('genlink'))
 async def link_generator(client: Client, message: Message):
     while True:
         try:
-            channel_message = await client.ask(text = "Forward Message from the DB Channel (with Quotes)..\nor Send the DB Channel Post link", chat_id = message.from_user.id, filters=(filters.forwarded | (filters.text & ~filters.forwarded)), timeout=60)
+            channel_message = await client.ask(
+                text="Forward Message from the DB Channel (with Quotes, must contain exactly one file)..\nor Send the DB Channel Post Link",
+                chat_id=message.from_user.id,
+                filters=(filters.forwarded | (filters.text & ~filters.forwarded)),
+                timeout=60
+            )
         except:
+            await message.reply("❌ Genlink command timed out or failed.")
             return
+        
+        # Validate the message
         msg_id = await get_message_id(client, channel_message)
-        if msg_id:
-            break
-        else:
-            await channel_message.reply("❌ Error\n\nthis Forwarded Post is not from my DB Channel or this Link is not taken from DB Channel", quote = True)
+        if not msg_id:
+            await channel_message.reply(
+                "❌ Error\n\nThis forwarded post is not from my DB Channel or the link is invalid.",
+                quote=True
+            )
             continue
+        
+        # Check if the message has exactly one file
+        if not channel_message.forward_from_chat or not has_single_file(channel_message):
+            await channel_message.reply(
+                "❌ Error\n\nThe forwarded message must contain exactly one file (e.g., one document, photo, video, or audio).",
+                quote=True
+            )
+            continue
+        break
 
+    # Generate the single message link
     base64_string = await encode(f"get-{msg_id * abs(client.db_channel.id)}")
     link = f"https://t.me/{client.username}?start={base64_string}"
     
     # Generate short URL
-    short_url = url_shortener.shorten_url(link)
+    short_url = url_shortener.shorten_url(link) or "Unable to generate short URL"
     
     # Create inline keyboard with multiple buttons
     buttons = [
         [
             InlineKeyboardButton("🔁 Share URL", url=f'https://telegram.me/share/url?url={link}'),
-            InlineKeyboardButton("🔗 Short URL", url=short_url) if short_url else None
+            InlineKeyboardButton("🔗 Short URL", url=short_url) if short_url != "Unable to generate short URL" else None
         ]
     ]
     # Remove None values from buttons
@@ -143,7 +228,9 @@ async def link_generator(client: Client, message: Message):
     
     reply_markup = InlineKeyboardMarkup(buttons)
     await channel_message.reply_text(
-        f"<b>Here is your link</b>\n\n{link}\n\n<b>Short URL:</b> {short_url or 'Unable to generate'}", 
-        quote=True, 
+        f"<b>Single file link generated successfully!</b>\n\n"
+        f"<b>Link:</b> {link}\n"
+        f"<b>Short URL:</b> {short_url}",
+        quote=True,
         reply_markup=reply_markup
     )
