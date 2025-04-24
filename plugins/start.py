@@ -63,8 +63,10 @@ async def start_command(client: Client, message: Message):
             return
         await temp_msg.delete()
 
-        for msg in messages:
+        warning_message = await message.reply_text("These messages will be deleted in 30 minutes.", quote=True)
+        sent_messages = []
 
+        for msg in messages:
             if bool(CUSTOM_CAPTION) & bool(msg.document):
                 caption = CUSTOM_CAPTION.format(previouscaption = "" if not msg.caption else msg.caption.html, filename = msg.document.file_name)
             else:
@@ -76,20 +78,19 @@ async def start_command(client: Client, message: Message):
                 reply_markup = None
 
             try:
-                warning_message = await message.reply_text("This message will be deleted in 30 minutes.", quote=True)
-                sent_message2 = await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
-                await asyncio.sleep(1800)
-                await sent_message2.delete()
-                await warning_message.delete()
+                sent_message = await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                sent_messages.append(sent_message)
+                await asyncio.sleep(0.5)
             except FloodWait as e:
                 await asyncio.sleep(e.x)
-                warning_message = await message.reply_text("This message will be deleted in 30 minutes.", quote=True)
-                sent_message2 = await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
-                await asyncio.sleep(1800)
-                await sent_message2.delete()
-                await warning_message.delete()
-            except:
+                sent_message = await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                sent_messages.append(sent_message)
+            except Exception as e:
+                await message.reply_text(f"Error sending a message: {str(e)}")
                 pass
+        
+        # Schedule deletion of all messages after 30 minutes
+        asyncio.create_task(delete_messages_after_timeout(sent_messages, warning_message, 1800))
         return
     else:
         reply_markup = InlineKeyboardMarkup(
@@ -114,6 +115,18 @@ async def start_command(client: Client, message: Message):
         )
         return
 
+# Function to delete messages after timeout
+async def delete_messages_after_timeout(messages, warning_message, timeout):
+    await asyncio.sleep(timeout)
+    for msg in messages:
+        try:
+            await msg.delete()
+        except Exception:
+            pass
+    try:
+        await warning_message.delete()
+    except Exception:
+        pass
     
 #=====================================================================================##
 
